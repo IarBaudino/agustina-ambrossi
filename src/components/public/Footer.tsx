@@ -14,7 +14,7 @@ export async function Footer() {
     <footer className="border-t border-line">
       <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-x-8 gap-y-2 px-5 py-4 text-[0.72rem] uppercase tracking-[0.14em] text-mute md:px-10 lg:px-11">
         <p>{name}</p>
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
           {settings.email ? (
             <a href={`mailto:${settings.email}`} className="underline decoration-line underline-offset-4">
               {settings.email}

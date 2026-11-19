@@ -73,7 +73,7 @@ El sitio público queda en `/`. El estudio queda en `/admin`.
 2. En **Configuración**, completá el nombre, la profesión, la biografía, la formación, los intereses, la declaración, el correo, Instagram y otros enlaces. Ahí también se suben el retrato y la fotografía de portada.
 3. En **Series → Nueva serie**, creá el trabajo. Podés dejarlo como borrador.
 4. Dentro de la serie, arrastrá las fotografías o elegilas. Se procesan de a una.
-5. Editá epígrafe, texto alternativo, fecha y lugar. Guardá con **Guardar epígrafes**.
+5. Editá epígrafe, texto alternativo, fecha y lugar. Guardá con **Guardar cambios**.
 6. Elegí la portada, ordená con **Subir**, **Bajar** o arrastrando el control **Arrastrar**.
 7. Marcá **Publicada** y guardá la serie. Recién ahí las fotografías publicadas pasan al bucket público.
 8. **Vista previa** muestra la serie, incluso si sigue en borrador.

@@ -43,6 +43,7 @@ export function PhotographManager({
   const [error, setError] = useState<string | null>(null)
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const [dragging, setDragging] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
   const dirty = items.some((item) => {
     const base = baseline.find((entry) => entry.id === item.id)
@@ -136,8 +137,8 @@ export function PhotographManager({
         <div>
           <h2 className="font-serif text-3xl tracking-tight">Fotografías</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-mute">
-            El orden de esta lista es el orden dentro de la categoría. Portada es la foto que se ve en el portfolio,
-            antes de entrar. Guardar epígrafes confirma textos, fechas y las dos casillas.
+            El orden de esta lista es el orden dentro de la categoría. Abrí una foto para editar sus datos.
+            Guardar cambios confirma textos, fechas, si se publica y si entra en el inicio.
           </p>
         </div>
         <p className="text-sm text-mute">{items.length} en la categoría</p>
@@ -174,12 +175,30 @@ export function PhotographManager({
             })
           }}
         >
-          <ol className="flex flex-col gap-8">
+          <div className="mb-4">
+            <button
+              type="button"
+              className={quietButtonClass}
+              onClick={() => {
+                const allOnHome = items.every((item) => item.homeSelected)
+                replace(items.map((item) => ({ ...item, homeSelected: !allOnHome })))
+              }}
+            >
+              {items.every((item) => item.homeSelected) ? "Quitar todas del inicio" : "Incluir todas en el inicio"}
+            </button>
+          </div>
+          <ol>
             {items.map((photo, index) => {
+              const open = openId === photo.id
               const saving =
                 photo.originalFileSizeBytes && photo.fileSizeBytes
                   ? reductionPercent(photo.originalFileSizeBytes, photo.fileSizeBytes)
                   : null
+              const notes = [
+                photo.published ? "Publicada" : "Oculta",
+                photo.homeSelected ? "En el inicio" : null,
+                coverId === photo.id ? "Portada" : null,
+              ].filter(Boolean)
 
               return (
                 <li
@@ -197,8 +216,59 @@ export function PhotographManager({
                     replace(next)
                     persistOrder(next)
                   }}
-                  className="grid gap-5 border-t border-line pt-6 lg:grid-cols-[180px_1fr]"
+                  className="border-t border-line"
                 >
+                  <div className="flex flex-wrap items-center gap-3 py-3 sm:gap-4">
+                    {photo.displayUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={photo.displayUrl}
+                        alt=""
+                        className="h-14 w-20 shrink-0 object-cover"
+                      />
+                    ) : (
+                      <div className="h-14 w-20 shrink-0 border border-line" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm">{photo.caption || "Sin epígrafe"}</p>
+                      <p className="mt-1 truncate text-[0.68rem] uppercase tracking-[0.14em] text-mute">
+                        {String(index + 1).padStart(2, "0")}
+                        {" · "}
+                        {notes.join(" · ")}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      draggable
+                      aria-label={`Arrastrar ${photo.altText || photo.caption || "fotografía"}`}
+                      className={`${quietButtonClass} hidden sm:inline-flex`}
+                      onDragStart={() => setDragging(photo.id)}
+                      onDragEnd={() => setDragging(null)}
+                    >
+                      Arrastrar
+                    </button>
+                    <button type="button" className={quietButtonClass} onClick={() => move(index, -1)} disabled={index === 0 || pending}>
+                      Subir
+                    </button>
+                    <button
+                      type="button"
+                      className={quietButtonClass}
+                      onClick={() => move(index, 1)}
+                      disabled={index === items.length - 1 || pending}
+                    >
+                      Bajar
+                    </button>
+                    <button
+                      type="button"
+                      className={quietButtonClass}
+                      aria-expanded={open}
+                      onClick={() => setOpenId(open ? null : photo.id)}
+                    >
+                      {open ? "Cerrar" : "Editar"}
+                    </button>
+                  </div>
+                  {open ? (
+                  <div className="grid gap-5 pb-6 lg:grid-cols-[180px_1fr]">
                   <div>
                     {photo.displayUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -321,27 +391,6 @@ export function PhotographManager({
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        draggable
-                        aria-label={`Arrastrar ${photo.altText || photo.caption || "fotografía"}`}
-                        className={quietButtonClass}
-                        onDragStart={() => setDragging(photo.id)}
-                        onDragEnd={() => setDragging(null)}
-                      >
-                        Arrastrar
-                      </button>
-                      <button type="button" className={quietButtonClass} onClick={() => move(index, -1)} disabled={index === 0 || pending}>
-                        Subir
-                      </button>
-                      <button
-                        type="button"
-                        className={quietButtonClass}
-                        onClick={() => move(index, 1)}
-                        disabled={index === items.length - 1 || pending}
-                      >
-                        Bajar
-                      </button>
-                      <button
-                        type="button"
                         className={quietButtonClass}
                         disabled={pending || coverId === photo.id}
                         onClick={() => {
@@ -393,15 +442,16 @@ export function PhotographManager({
                         </button>
                       )}
                     </div>
-                    <p className="text-xs text-mute">También se puede arrastrar la fila para cambiar el orden.</p>
                   </div>
+                  </div>
+                  ) : null}
                 </li>
               )
             })}
           </ol>
           <div className="mt-8 flex flex-wrap items-center gap-4">
             <button type="submit" className={buttonClass} disabled={pending}>
-              {pending ? "Guardando…" : "Guardar epígrafes"}
+              {pending ? "Guardando…" : "Guardar cambios"}
             </button>
             {message ? <p role="status">{message}</p> : null}
             {error ? (
