@@ -1,12 +1,14 @@
 "use client"
 
-import { useActionState, useEffect, useState } from "react"
+import { useActionState, useEffect, useRef, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { updateSettings } from "@/lib/actions/settings"
 import { buttonClass, fieldClass, labelClass, quietButtonClass } from "@/components/ui/controls"
 import { Hint } from "@/components/ui/Hint"
 import { useUnsavedChanges } from "@/components/admin/useUnsavedChanges"
 import type { ActionState, SiteSettings, SocialLink } from "@/types/content"
+
+import type { SettingsSectionId } from "@/components/admin/settingsSections"
 
 const colorFields = [
   {
@@ -33,129 +35,170 @@ const colorFields = [
 
 type ColorId = (typeof colorFields)[number]["id"]
 
-export function SettingsForm({ settings }: { settings: SiteSettings }) {
+export function SettingsForm({
+  section,
+  settings,
+  children,
+}: {
+  section: SettingsSectionId
+  settings: SiteSettings
+  children?: ReactNode
+}) {
+  return (
+    <div className="max-w-3xl">
+      {section === "textos" ? (
+        <SectionForm section="textos" submitLabel="Guardar cambios">
+          <Field
+            id="photographer_name"
+            label="Nombre"
+            defaultValue={settings.photographerName}
+            hint="El nombre que se lee en la barra, en el pie y como título de Sobre mí y Contacto."
+          />
+          <Field
+            id="profession"
+            label="Profesión"
+            defaultValue={settings.profession}
+            hint="La línea corta debajo del nombre en Sobre mí. Por ejemplo: Fotoperiodismo / Fotografía documental."
+          />
+          <Area
+            id="author_statement"
+            label="Mirada"
+            defaultValue={settings.authorStatement}
+            rows={4}
+            hint="Un texto breve, en primera persona, sobre cómo entiende el trabajo. En Sobre mí aparece con el título Mirada."
+          />
+          <Area
+            id="biography"
+            label="Biografía"
+            defaultValue={settings.biography}
+            rows={8}
+            hint="El texto más largo. En Sobre mí aparece con el título Biografía. Podés usar varios párrafos."
+          />
+          <Area
+            id="education"
+            label="Formación"
+            defaultValue={settings.education}
+            rows={5}
+            hint="Estudios, talleres o recorridos. En Sobre mí aparece con el título Formación."
+          />
+          <Area
+            id="interests"
+            label="Intereses"
+            defaultValue={settings.interests}
+            rows={4}
+            hint="Temas que le interesan fotografiar. En Sobre mí aparece con el título Intereses."
+          />
+        </SectionForm>
+      ) : null}
+
+      {section === "contacto" ? <ContactSection settings={settings} /> : null}
+      {section === "colores" ? <ColorSection settings={settings} /> : null}
+
+      {section === "imagenes" ? (
+        <>
+          <SectionForm section="imagenes" submitLabel="Guardar cambios">
+          <Field
+            id="portrait_alt"
+            label="Texto alternativo del retrato"
+            defaultValue={settings.portraitAlt}
+            hint="Describe la foto de Sobre mí para quien no puede verla. No se muestra como texto en la página."
+          />
+          <Field
+            id="featured_image_alt"
+            label="Texto alternativo de la imagen para compartir"
+            defaultValue={settings.featuredImageAlt}
+            hint="Describe la imagen que aparece al compartir el enlace del sitio. No se muestra en la página."
+          />
+        </SectionForm>
+          <div className="mt-14">{children}</div>
+        </>
+      ) : null}
+
+      {section === "buscadores" ? (
+        <SectionForm section="buscadores" submitLabel="Guardar cambios">
+          <Field
+            id="seo_title"
+            label="Título para buscadores"
+            defaultValue={settings.seoTitle}
+            hint="El título de la pestaña y el que puede mostrar Google cuando no hay uno más específico. Suele ser el nombre."
+          />
+          <Area
+            id="seo_description"
+            label="Descripción para buscadores"
+            defaultValue={settings.seoDescription}
+            rows={3}
+            hint="Una o dos frases que Google puede mostrar debajo del título. No aparece como texto dentro de las páginas."
+          />
+        </SectionForm>
+      ) : null}
+    </div>
+  )
+}
+
+function SectionForm({
+  section,
+  submitLabel,
+  extraDirty = false,
+  onSaved,
+  children,
+}: {
+  section: SettingsSectionId
+  submitLabel: string
+  extraDirty?: boolean
+  onSaved?: () => void
+  children: ReactNode
+}) {
   const [state, formAction, pending] = useActionState<ActionState, FormData>(updateSettings, {})
-  const [links, setLinks] = useState<SocialLink[]>(settings.socialLinks)
-  const [colors, setColors] = useState<Record<ColorId, string>>({
-    color_background: settings.colorBackground,
-    color_text: settings.colorText,
-    color_muted: settings.colorMuted,
-    color_line: settings.colorLine,
-  })
   const [dirty, setDirty] = useState(false)
   const router = useRouter()
+  const onSavedRef = useRef(onSaved)
+  onSavedRef.current = onSaved
 
-  useUnsavedChanges(dirty && !state.ok)
+  useUnsavedChanges((dirty || extraDirty) && !state.ok)
 
   useEffect(() => {
     if (state.ok) {
       setDirty(false)
+      onSavedRef.current?.()
       router.refresh()
     }
   }, [state, router])
 
   return (
-    <form action={formAction} className="grid max-w-3xl gap-8" onChange={() => setDirty(true)}>
+    <form action={formAction} className="grid gap-8" onChange={() => setDirty(true)}>
+      <input type="hidden" name="section" value={section} />
+      {children}
+      {state.error ? (
+        <p role="alert" className="text-sm text-danger">
+          {state.error}
+        </p>
+      ) : null}
+      {state.ok ? (
+        <p role="status" className="text-sm">
+          {state.ok}
+        </p>
+      ) : null}
+      <div>
+        <button type="submit" className={buttonClass} disabled={pending}>
+          {pending ? "Guardando…" : submitLabel}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+function ContactSection({ settings }: { settings: SiteSettings }) {
+  const [links, setLinks] = useState<SocialLink[]>(settings.socialLinks)
+  const [dirtyLinks, setDirtyLinks] = useState(false)
+
+  return (
+    <SectionForm
+      section="contacto"
+      submitLabel="Guardar cambios"
+      extraDirty={dirtyLinks}
+      onSaved={() => setDirtyLinks(false)}
+    >
       <input type="hidden" name="social_links" value={JSON.stringify(links)} />
-      <fieldset className="grid gap-6">
-        <legend className="font-serif text-3xl tracking-tight">Colores</legend>
-        <Hint>
-          Cambian el sitio público y el estudio al guardar. Elegí el color o pegá el código de seis cifras.
-        </Hint>
-        <div
-          className="border p-5"
-          style={{
-            background: colors.color_background,
-            color: colors.color_text,
-            borderColor: colors.color_line,
-          }}
-        >
-          <p className="text-[0.68rem] uppercase tracking-[0.16em]" style={{ color: colors.color_muted }}>
-            Vista previa
-          </p>
-          <p className="mt-3 font-serif text-4xl tracking-tight">Así se va a ver el sitio</p>
-          <p className="mt-3 max-w-md text-sm leading-6" style={{ color: colors.color_muted }}>
-            Este recuadro usa los colores de abajo, antes de guardarlos.
-          </p>
-        </div>
-        {colorFields.map((field) => (
-          <div key={field.id}>
-            <label className={labelClass} htmlFor={field.id}>
-              {field.label}
-            </label>
-            <div className="mt-2 flex items-center gap-3">
-              <input
-                aria-label={`Elegir ${field.label}`}
-                type="color"
-                value={colors[field.id]}
-                onChange={(event) => setColors({ ...colors, [field.id]: event.target.value })}
-                className="size-11 cursor-pointer border border-line bg-transparent p-1"
-              />
-              <input
-                id={field.id}
-                name={field.id}
-                value={colors[field.id]}
-                spellCheck={false}
-                onChange={(event) => setColors({ ...colors, [field.id]: event.target.value })}
-                className={fieldClass}
-              />
-            </div>
-            <Hint>{field.hint}</Hint>
-          </div>
-        ))}
-      </fieldset>
-      <Field
-        id="photographer_name"
-        label="Nombre"
-        defaultValue={settings.photographerName}
-        hint="El nombre que se lee en la barra, en el pie y como título de Sobre mí y Contacto."
-      />
-      <Field
-        id="profession"
-        label="Profesión"
-        defaultValue={settings.profession}
-        hint="La línea corta debajo del nombre en Sobre mí. Por ejemplo: Fotoperiodismo / Fotografía documental."
-      />
-      <Area
-        id="author_statement"
-        label="Mirada"
-        defaultValue={settings.authorStatement}
-        rows={4}
-        hint="Un texto breve, en primera persona, sobre cómo entiende el trabajo. En Sobre mí aparece con el título Mirada."
-      />
-      <Area
-        id="biography"
-        label="Biografía"
-        defaultValue={settings.biography}
-        rows={8}
-        hint="El texto más largo. En Sobre mí aparece con el título Biografía. Podés usar varios párrafos."
-      />
-      <Area
-        id="education"
-        label="Formación"
-        defaultValue={settings.education}
-        rows={5}
-        hint="Estudios, talleres o recorridos. En Sobre mí aparece con el título Formación."
-      />
-      <Area
-        id="interests"
-        label="Intereses"
-        defaultValue={settings.interests}
-        rows={4}
-        hint="Temas que le interesan fotografiar. En Sobre mí aparece con el título Intereses."
-      />
-      <Field
-        id="portrait_alt"
-        label="Texto alternativo del retrato"
-        defaultValue={settings.portraitAlt}
-        hint="Describe la foto de Sobre mí para quien no puede verla. No se muestra como texto en la página."
-      />
-      <Field
-        id="featured_image_alt"
-        label="Texto alternativo de la imagen para compartir"
-        defaultValue={settings.featuredImageAlt}
-        hint="Describe la imagen que aparece al compartir el enlace del sitio. No se muestra en la página."
-      />
       <div className="grid gap-6 sm:grid-cols-2">
         <Field
           id="email"
@@ -187,6 +230,7 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
                 const next = [...links]
                 next[index] = { ...link, label: event.target.value }
                 setLinks(next)
+                setDirtyLinks(true)
               }}
               className={fieldClass}
             />
@@ -198,6 +242,7 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
                 const next = [...links]
                 next[index] = { ...link, url: event.target.value }
                 setLinks(next)
+                setDirtyLinks(true)
               }}
               className={fieldClass}
             />
@@ -205,7 +250,7 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
               type="button"
               className={quietButtonClass}
               onClick={() => {
-                setDirty(true)
+                setDirtyLinks(true)
                 setLinks(links.filter((_, linkIndex) => linkIndex !== index))
               }}
             >
@@ -217,42 +262,72 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
           type="button"
           className={quietButtonClass}
           onClick={() => {
-            setDirty(true)
+            setDirtyLinks(true)
             setLinks([...links, { label: "", url: "https://" }])
           }}
         >
           Agregar enlace
         </button>
       </fieldset>
-      <Field
-        id="seo_title"
-        label="Título para buscadores"
-        defaultValue={settings.seoTitle}
-        hint="El título de la pestaña y el que puede mostrar Google cuando no hay uno más específico. Suele ser el nombre."
-      />
-      <Area
-        id="seo_description"
-        label="Descripción para buscadores"
-        defaultValue={settings.seoDescription}
-        rows={3}
-        hint="Una o dos frases que Google puede mostrar debajo del título. No aparece como texto dentro de las páginas."
-      />
-      {state.error ? (
-        <p role="alert" className="text-sm text-danger">
-          {state.error}
+    </SectionForm>
+  )
+}
+
+function ColorSection({ settings }: { settings: SiteSettings }) {
+  const [colors, setColors] = useState<Record<ColorId, string>>({
+    color_background: settings.colorBackground,
+    color_text: settings.colorText,
+    color_muted: settings.colorMuted,
+    color_line: settings.colorLine,
+  })
+
+  return (
+    <SectionForm section="colores" submitLabel="Guardar cambios">
+      <Hint>
+        Cambian el sitio público y el estudio al guardar. Elegí el color o pegá el código de seis cifras.
+      </Hint>
+      <div
+        className="border p-5"
+        style={{
+          background: colors.color_background,
+          color: colors.color_text,
+          borderColor: colors.color_line,
+        }}
+      >
+        <p className="text-[0.68rem] uppercase tracking-[0.16em]" style={{ color: colors.color_muted }}>
+          Vista previa
         </p>
-      ) : null}
-      {state.ok ? (
-        <p role="status" className="text-sm">
-          {state.ok}
+        <p className="mt-3 font-serif text-4xl tracking-tight">Así se va a ver el sitio</p>
+        <p className="mt-3 max-w-md text-sm leading-6" style={{ color: colors.color_muted }}>
+          Este recuadro usa los colores de abajo, antes de guardarlos.
         </p>
-      ) : null}
-      <div>
-        <button type="submit" className={buttonClass} disabled={pending}>
-          {pending ? "Guardando…" : "Guardar"}
-        </button>
       </div>
-    </form>
+      {colorFields.map((field) => (
+        <div key={field.id}>
+          <label className={labelClass} htmlFor={field.id}>
+            {field.label}
+          </label>
+          <div className="mt-2 flex items-center gap-3">
+            <input
+              aria-label={`Elegir ${field.label}`}
+              type="color"
+              value={colors[field.id]}
+              onChange={(event) => setColors({ ...colors, [field.id]: event.target.value })}
+              className="size-11 cursor-pointer border border-line bg-transparent p-1"
+            />
+            <input
+              id={field.id}
+              name={field.id}
+              value={colors[field.id]}
+              spellCheck={false}
+              onChange={(event) => setColors({ ...colors, [field.id]: event.target.value })}
+              className={fieldClass}
+            />
+          </div>
+          <Hint>{field.hint}</Hint>
+        </div>
+      ))}
+    </SectionForm>
   )
 }
 

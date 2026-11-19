@@ -3,15 +3,20 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { logout } from "@/lib/actions/auth"
+import { settingsSections } from "@/components/admin/settingsSections"
 
 const links = [
   { href: "/admin/dashboard", label: "Panel" },
   { href: "/admin/series", label: "Categorías" },
-  { href: "/admin/configuracion", label: "Configuración" },
 ]
+
+function itemClass(active: boolean) {
+  return active ? "text-sm" : "text-sm text-mute"
+}
 
 export function AdminNav({ email }: { email: string | null }) {
   const pathname = usePathname()
+  const inSettings = pathname.startsWith("/admin/configuracion")
 
   return (
     <>
@@ -25,6 +30,12 @@ export function AdminNav({ email }: { email: string | null }) {
             {links.map((link) => (
               <Link key={link.href} href={link.href} className="text-sm">
                 {link.label}
+              </Link>
+            ))}
+            <p className="text-sm">Configuración</p>
+            {settingsSections.map((section) => (
+              <Link key={section.href} href={section.href} className="pl-3 text-sm text-mute">
+                {section.label}
               </Link>
             ))}
             <Link href="/" className="text-sm text-mute">
@@ -51,12 +62,30 @@ export function AdminNav({ email }: { email: string | null }) {
                   key={link.href}
                   href={link.href}
                   aria-current={active ? "page" : undefined}
-                  className={active ? "text-sm" : "text-sm text-mute"}
+                  className={itemClass(active)}
                 >
                   {link.label}
                 </Link>
               )
             })}
+            <div className="flex flex-col gap-2">
+              <p className={inSettings ? "text-sm" : "text-sm text-mute"}>Configuración</p>
+              <div className="flex flex-col gap-2 border-l border-line pl-3">
+                {settingsSections.map((section) => {
+                  const active = pathname === section.href
+                  return (
+                    <Link
+                      key={section.href}
+                      href={section.href}
+                      aria-current={active ? "page" : undefined}
+                      className={active ? "text-sm" : "text-sm text-mute"}
+                    >
+                      {section.label}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
           </nav>
         </div>
         <div className="flex flex-col gap-4 text-sm">

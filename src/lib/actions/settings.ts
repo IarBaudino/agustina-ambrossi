@@ -32,40 +32,106 @@ function failure(error: unknown) {
   return "No se pudo procesar la imagen."
 }
 
+const sections = {
+  textos: "Textos guardados.",
+  contacto: "Contacto guardado.",
+  colores: "Colores guardados.",
+  imagenes: "Textos de las imágenes guardados.",
+  buscadores: "Datos para buscadores guardados.",
+} as const
+
+type SettingsSection = keyof typeof sections
+
+function sectionPatch(
+  section: SettingsSection,
+  formData: FormData,
+): { error: string } | { patch: Record<string, unknown> } {
+  if (section === "textos") {
+    return {
+      patch: {
+      photographer_name: readText(formData.get("photographer_name"), 120),
+      profession: readText(formData.get("profession"), 160) || "Fotoperiodismo / Fotografía documental",
+      author_statement: readText(formData.get("author_statement"), 2000),
+      biography: readText(formData.get("biography"), 8000),
+      education: readText(formData.get("education"), 4000),
+      interests: readText(formData.get("interests"), 4000),
+      },
+    }
+  }
+
+  if (section === "contacto") {
+    const email = readText(formData.get("email"), 160)
+    const emailError = validateEmail(email)
+
+    if (emailError) {
+      return { error: emailError }
+    }
+
+    const links = validateSocialLinks(String(formData.get("social_links") ?? "[]"))
+
+    if ("error" in links) {
+      return { error: links.error }
+    }
+
+    return {
+      patch: {
+        email,
+        instagram: readText(formData.get("instagram"), 160),
+        social_links: links.links,
+      },
+    }
+  }
+
+  if (section === "colores") {
+    const background = readColor(formData.get("color_background"), "El fondo")
+    const text = readColor(formData.get("color_text"), "El texto")
+    const muted = readColor(formData.get("color_muted"), "El texto secundario")
+    const line = readColor(formData.get("color_line"), "Las líneas")
+    const colorError = [background, text, muted, line].find((item) => "error" in item)
+
+    if (colorError && "error" in colorError && colorError.error) {
+      return { error: colorError.error }
+    }
+
+    return {
+      patch: {
+        color_background: "color" in background ? background.color : undefined,
+        color_text: "color" in text ? text.color : undefined,
+        color_muted: "color" in muted ? muted.color : undefined,
+        color_line: "color" in line ? line.color : undefined,
+      },
+    }
+  }
+
+  if (section === "imagenes") {
+    return {
+      patch: {
+        portrait_alt: readText(formData.get("portrait_alt"), 300),
+        featured_image_alt: readText(formData.get("featured_image_alt"), 300),
+      },
+    }
+  }
+
+  return {
+    patch: {
+      seo_title: readText(formData.get("seo_title"), 160),
+      seo_description: readText(formData.get("seo_description"), 300),
+    },
+  }
+}
+
 export async function updateSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { supabase } = await requireAdmin()
-  const photographerName = readText(formData.get("photographer_name"), 120)
-  const profession = readText(formData.get("profession"), 160)
-  const biography = readText(formData.get("biography"), 8000)
-  const education = readText(formData.get("education"), 4000)
-  const interests = readText(formData.get("interests"), 4000)
-  const authorStatement = readText(formData.get("author_statement"), 2000)
-  const email = readText(formData.get("email"), 160)
-  const instagram = readText(formData.get("instagram"), 160)
-  const seoTitle = readText(formData.get("seo_title"), 160)
-  const seoDescription = readText(formData.get("seo_description"), 300)
-  const portraitAlt = readText(formData.get("portrait_alt"), 300)
-  const featuredAlt = readText(formData.get("featured_image_alt"), 300)
-  const emailError = validateEmail(email)
+  const section = String(formData.get("section") ?? "")
 
-  if (emailError) {
-    return { error: emailError }
+  if (!(section in sections)) {
+    return { error: "No se pudo guardar esta sección." }
   }
 
-  const links = validateSocialLinks(String(formData.get("social_links") ?? "[]"))
+  const result = sectionPatch(section as SettingsSection, formData)
 
-  if ("error" in links) {
-    return { error: links.error }
-  }
-
-  const background = readColor(formData.get("color_background"), "El fondo")
-  const text = readColor(formData.get("color_text"), "El texto")
-  const muted = readColor(formData.get("color_muted"), "El texto secundario")
-  const line = readColor(formData.get("color_line"), "Las líneas")
-  const colorError = [background, text, muted, line].find((item) => "error" in item)
-
-  if (colorError && "error" in colorError) {
-    return { error: colorError.error }
+  if ("error" in result) {
+    return { error: result.error }
   }
 
   const { data: settings } = await supabase.from("site_settings").select("id").limit(1).maybeSingle()
@@ -74,28 +140,7 @@ export async function updateSettings(_prev: ActionState, formData: FormData): Pr
     return { error: "No se encontró la configuración del sitio." }
   }
 
-  const { error } = await supabase
-    .from("site_settings")
-    .update({
-      photographer_name: photographerName,
-      profession: profession || "Fotoperiodismo / Fotografía documental",
-      biography,
-      education,
-      interests,
-      author_statement: authorStatement,
-      email,
-      instagram,
-      social_links: links.links,
-      seo_title: seoTitle,
-      seo_description: seoDescription,
-      portrait_alt: portraitAlt,
-      featured_image_alt: featuredAlt,
-      color_background: "color" in background ? background.color : undefined,
-      color_text: "color" in text ? text.color : undefined,
-      color_muted: "color" in muted ? muted.color : undefined,
-      color_line: "color" in line ? line.color : undefined,
-    })
-    .eq("id", settings.id)
+  const { error } = await supabase.from("site_settings").update(result.patch).eq("id", settings.id)
 
   if (error) {
     if (error.message.includes("color_background") || error.code === "PGRST204") {
@@ -109,7 +154,7 @@ export async function updateSettings(_prev: ActionState, formData: FormData): Pr
   }
 
   invalidateSettings()
-  return { ok: "Configuración guardada." }
+  return { ok: sections[section as SettingsSection] }
 }
 
 export async function finalizeSiteUpload(input: {
