@@ -50,7 +50,7 @@ function sectionPatch(
     return {
       patch: {
       photographer_name: readText(formData.get("photographer_name"), 120),
-      profession: readText(formData.get("profession"), 160) || "Fotoperiodismo / Fotografía documental",
+      profession: readText(formData.get("profession"), 160),
       author_statement: readText(formData.get("author_statement"), 2000),
       biography: readText(formData.get("biography"), 8000),
       education: readText(formData.get("education"), 4000),

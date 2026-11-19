@@ -72,7 +72,7 @@ alter table public.series
 create table if not exists public.site_settings (
   id uuid primary key default gen_random_uuid(),
   photographer_name text not null default 'Agustina Ambrossi',
-  profession text not null default 'Fotoperiodismo / Fotografía documental',
+  profession text not null default '',
   biography text not null default '',
   education text not null default '',
   interests text not null default '',
@@ -103,7 +103,7 @@ create table if not exists public.site_settings (
 );
 
 insert into public.site_settings (photographer_name, profession, seo_title, seo_description)
-select 'Agustina Ambrossi', 'Fotoperiodismo / Fotografía documental', 'Agustina Ambrossi', 'Fotoperiodismo y fotografía documental.'
+select 'Agustina Ambrossi', '', 'Agustina Ambrossi', ''
 where not exists (select 1 from public.site_settings);
 
 alter table public.site_settings

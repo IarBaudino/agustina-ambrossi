@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { connection } from "next/server"
 import { PhotoViewer } from "@/components/public/PhotoViewer"
-import { getHomeSelection, getSiteSettings } from "@/lib/data/public"
+import { getHomeSelection } from "@/lib/data/public"
 
 export default function HomePage() {
   return (
@@ -13,19 +13,14 @@ export default function HomePage() {
 
 async function HomeContent() {
   await connection()
-  const [settings, photos] = await Promise.all([getSiteSettings(), getHomeSelection()])
-  const name = settings.photographerName || "Agustina Ambrossi"
+  const photos = await getHomeSelection()
 
   return (
     <div className="px-5 md:px-10 lg:px-11">
       <header className="border-b border-line pb-12 pt-14 md:pb-[50px] md:pt-16">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-mute">Fotografía seleccionada</p>
-        <h1 className="mt-[18px] font-serif text-[clamp(3.25rem,6vw,5.5rem)] leading-[0.92] tracking-[-0.045em]">
+        <h1 className="font-serif text-[clamp(3.25rem,6vw,5.5rem)] leading-[0.92] tracking-[-0.045em]">
           Portfolio
         </h1>
-        <p className="mt-[18px] max-w-[1040px] text-[17px] leading-[1.55] text-mute">
-          Selección de fotografías documentales de {name}, de proyectos de largo aliento y encargos.
-        </p>
       </header>
       <div className="py-12 lg:py-16">
         {photos.length === 0 ? (

@@ -118,7 +118,7 @@ export type ActionState = {
 
 export const emptySettings: SiteSettings = {
   photographerName: "Agustina Ambrossi",
-  profession: "Fotoperiodismo / Fotografía documental",
+  profession: "",
   biography: "",
   education: "",
   interests: "",
@@ -139,7 +139,7 @@ export const emptySettings: SiteSettings = {
   instagram: "",
   socialLinks: [],
   seoTitle: "Agustina Ambrossi",
-  seoDescription: "Fotoperiodismo y fotografía documental.",
+  seoDescription: "",
   colorBackground: "#040302",
   colorText: "#f5f4ef",
   colorMuted: "#a8a39b",

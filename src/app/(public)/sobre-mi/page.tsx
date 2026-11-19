@@ -51,7 +51,9 @@ async function AboutContent() {
         <h1 className="mt-4 font-serif text-5xl tracking-tight md:text-6xl">
           {settings.photographerName || "Portfolio"}
         </h1>
-        <p className="mt-4 text-[0.72rem] uppercase tracking-[0.16em] text-mute">{settings.profession}</p>
+        {settings.profession ? (
+          <p className="mt-4 text-[0.72rem] uppercase tracking-[0.16em] text-mute">{settings.profession}</p>
+        ) : null}
         {sections.length === 0 ? (
           <p className="mt-10 text-lg leading-8 text-mute">La biografía todavía no está publicada.</p>
         ) : (

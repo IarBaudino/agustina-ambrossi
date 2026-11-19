@@ -26,7 +26,6 @@ export const metadata: Metadata = {
     default: "Portfolio",
     template: "%s",
   },
-  description: "Portfolio de fotoperiodismo y fotografía documental.",
   robots: {
     index: true,
     follow: true,
